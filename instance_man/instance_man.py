@@ -38,9 +38,10 @@ def snapshot_disk(project, zone, auth_file, instance, disk):
                         sys.exit(1)
                     else:
                         print("Snapshotting")
+                        region = zone[0:len(zone)-2]
                         snapshot_body = {
                             "name": disk+"-001",
-                            "storageLocations": ["europe-west2"]
+                            "storageLocations": [region]
                         }
                         request = compute.disks().createSnapshot(project=project, zone=zone, disk=disk,
                                                                  body=snapshot_body)
@@ -49,6 +50,16 @@ def snapshot_disk(project, zone, auth_file, instance, disk):
                         sys.exit(0)
     print("ERROR: Matching disk not found")
     sys.exit(1)
+
+
+def list_snapshots(project, zone, auth_file):
+    # Displays a list of snapshots
+    credentials = service_account.Credentials.from_service_account_file(auth_file)
+    compute = discovery.build('compute', 'v1', credentials=credentials)
+    snapshots = compute.snapshots().list(project=project).execute()
+    for s in snapshots['items']:
+        print(s['name'] + " - " + s['creationTimestamp'] + " - " + s['diskSizeGb'] + " Gb")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
@@ -66,11 +77,15 @@ if __name__ == "__main__":
     snapshot_disk_parser.add_argument('--instance')
     snapshot_disk_parser.add_argument('--disk')
 
+    list_snapshots_parser = subparsers.add_parser('list_snapshots')
+
     args = parser.parse_args()
 
     if args.command == 'list_instances':
         list_instances(args.project, args.zone, args.auth)
     elif args.command == 'snapshot_disk':
         snapshot_disk(args.project, args.zone, args.auth, args.instance, args.disk)
+    elif args.command == 'list_snapshots':
+        list_snapshots(args.project, args.zone, args.auth)
 
     sys.exit(0)
